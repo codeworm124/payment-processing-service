@@ -21,7 +21,7 @@ public class JsonUtil {
       return objectMapper.writeValueAsString(obj);
     } catch (JsonProcessingException e) {
       log.error("Error converting object to JSoN");
-      throw new RuntimeException("JSOn=N conversion error:"+e.getMessage());
+      throw new RuntimeException("JSOn=N conversion error:"+e.getMessage());//TODo custom exception
     }
     }
     
@@ -30,7 +30,7 @@ public class JsonUtil {
             return objectMapper.readValue(jsonString, clazz);
         } catch (Exception e) {
             log.info("Error converting JSON to Java object: " + e.getMessage());
-            throw new RuntimeException("JSON conversion erroe:"+e.getMessage());
+            throw new RuntimeException("JSON conversion erroe:"+e.getMessage());//TODO custom exception
             
         }
     }

@@ -22,7 +22,7 @@ public class HttpServiceEngine {
   private final RestClient restClient;
 
   public ResponseEntity<String> makeHttpCall(HttpRequest httpRequest) {
-    log.info("making http call in HttpServiceEngine");
+    log.info("making http call in HttpServiceEngine HttpRequest:{}",httpRequest);
 
 
     
@@ -38,6 +38,8 @@ public class HttpServiceEngine {
       log.info("HTTP call completed httpResponse:{}",httpResponse);
       return httpResponse;
     }
+    
+    
     
     catch(HttpClientErrorException | HttpServerErrorException e) {
       log.error("HttpClientErrorException | HttpServerErrorException while preparing form data:{}",e.getMessage(),e);
