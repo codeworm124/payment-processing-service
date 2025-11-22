@@ -1,0 +1,36 @@
+package com.hulkhiretech.payments.service.impl.statusprocessor;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.stereotype.Service;
+
+import com.hulkhiretech.payments.dao.interfaces.TransactionDao;
+import com.hulkhiretech.payments.dto.TransactionDto;
+import com.hulkhiretech.payments.entity.TransactionEntity;
+import com.hulkhiretech.payments.service.Interface.TransactionStatusProcessor;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class CreatedStatusProcessor implements TransactionStatusProcessor {
+
+	private final TransactionDao transactionDao;
+	private final ModelMapper modelMapper;
+	@Override
+	public TransactionDto processStatus(TransactionDto txnDto) {
+		log.info("Processing Created Status with ID: {}", txnDto);
+		
+		TransactionEntity txnEntity=modelMapper.map(txnDto, TransactionEntity.class);
+		log.info("Mapped Transaction Entity: {}", txnEntity);
+		
+		TransactionEntity responseEntity= transactionDao.createTransaction(txnEntity);
+		log.info("Transaction Entity after creation: {}", responseEntity);
+		
+		txnDto.setId(responseEntity.getId());
+		
+		return txnDto;
+	}
+
+}
