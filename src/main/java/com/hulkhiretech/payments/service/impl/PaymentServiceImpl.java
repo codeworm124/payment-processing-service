@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.hulkhiretech.payments.dao.interfaces.TransactionDao;
 import com.hulkhiretech.payments.dto.TransactionDto;
 import com.hulkhiretech.payments.entity.TransactionEntity;
+import com.hulkhiretech.payments.exception.ProcessingServiceException;
 import com.hulkhiretech.payments.http.HttpRequest;
 import com.hulkhiretech.payments.http.HttpServiceEngine;
 import com.hulkhiretech.payments.paypalprovider.PPOrderResponse;
@@ -86,13 +87,29 @@ public class PaymentServiceImpl implements PaymentService {
 	   		
 	   		//code line from 88 to 93 should write in try catch block to handle http call exceptions
 	   		//then inside catch block handle failed status update
-	   		//and if not catch block executed then line from 98 to 101 execute                                                                                                                                
-	   		ResponseEntity<String> httpResponse=httpServiceEngine.makeHttpCall(httpReq);
-	   		log.info("Received response from PayPal Create Order: {}", httpResponse);
+	   		//and if not catch block executed then line from 98 to 101 execute   
 	   		
-	   		PPOrderResponse ppOrderResponse = ppCreateOrderHelper.handlePaypalResponse(httpResponse);
+	   		PPOrderResponse ppOrderResponse=null;
 	   		
-	   		log.info("Processed PayPal Order Response: {}", ppOrderResponse);
+	   		try {
+	   			ResponseEntity<String> httpResponse=httpServiceEngine.makeHttpCall(httpReq);
+		   		log.info("Received response from PayPal Create Order: {}", httpResponse);
+		   		
+		   		ppOrderResponse = ppCreateOrderHelper.handlePaypalResponse(httpResponse);
+		   		
+		   		log.info("Processed PayPal Order Response: {}", ppOrderResponse);
+		   		
+	   		}
+	   		catch(ProcessingServiceException ex) {
+	   			log.error("Error during PayPal Create Order HTTP call: {}", ex.getMessage());
+	   			
+	   			txnDto.setTxnStatusId(6); //6 for failed
+	   			txnDto.setErrorCode(ex.getErrorCode());
+	   			txnDto.setErrorMessage(ex.getErrorMessage());
+	   			response=paymentStatusService.processPayment(txnDto);
+	   			 throw new ProcessingServiceException(ex.getErrorCode(), ex.getErrorMessage(), ex.getHttpStatus());
+	   			
+	   		}
 	   		
 	   		//TODO:update status to pending
 	   		txnDto.setTxnStatusId(3); //3 for pending
