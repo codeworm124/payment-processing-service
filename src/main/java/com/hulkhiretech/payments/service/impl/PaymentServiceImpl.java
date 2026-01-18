@@ -19,6 +19,7 @@ import com.hulkhiretech.payments.pojo.InitiatePaymentRequest;
 import com.hulkhiretech.payments.pojo.PaymentResponse;
 import com.hulkhiretech.payments.service.PaymentService;
 import com.hulkhiretech.payments.service.PaymentStatusService;
+import com.hulkhiretech.payments.service.helper.PPCaptureOrderHelper;
 import com.hulkhiretech.payments.service.helper.PPCreateOrderHelper;
 
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class PaymentServiceImpl implements PaymentService {
 	private final PPCreateOrderHelper ppCreateOrderHelper;
 	private final HttpServiceEngine httpServiceEngine;
 	private final TransactionDao transactionDao;
-		
+	private final PPCaptureOrderHelper ppCaptureOrderHelper;	
 	private final PaymentStatusService paymentStatusService;
 	
 	@Override
@@ -129,9 +130,43 @@ public class PaymentServiceImpl implements PaymentService {
 	}
 
 	@Override
-	public String capturePayment(String txnReference) {
+	public PaymentResponse capturePayment(String txnReference) {
 		log.info("capturePayment with txnReference: {}", txnReference);
-				return "capturePayment from PaymentServiceImpl with txnReference: " + txnReference;
+		
+		TransactionEntity txnEntity=transactionDao.getTransactionByTxnReference(txnReference);
+		log.info("Fetched TransactionEntity from DB: {}", txnEntity);
+	    TransactionDto txnDto=modelMapper.map(txnEntity, TransactionDto.class);
+		txnDto.setTxnStatusId(4); //4 for approved
+		txnDto=paymentStatusService.processPayment(txnDto);//TODO:coding in ApprovedStatusProcessor
+		log.info(txnReference+" after processing approved status: {}", txnDto);
+		
+		HttpRequest httpReq=ppCaptureOrderHelper.prepareHttpRequest(txnReference,txnDto);
+		
+		log.info("Prepared HttpRequest for PayPal Capture Order: {}", httpReq);
+		PPOrderResponse ppOrderResponse=null;
+		try {
+			
+			ResponseEntity<String> responseEntity=httpServiceEngine.makeHttpCall(httpReq);
+			log.info("Received response from PayPal Capture Order: {}", responseEntity);
+			ppOrderResponse = ppCaptureOrderHelper.handlePaypalResponse(responseEntity);
+		}
+		catch(ProcessingServiceException ex) {
+			log.error("Error during PayPal Capture Order HTTP call: {}", ex.getMessage());
+			throw ex; //custom exception
+		}
+		
+		txnDto.setTxnStatusId(5); //5 for success
+		log.info("PayPal Capture Order successful with Provider Reference: {}", ppOrderResponse.getOrderId());
+		txnDto=paymentStatusService.processPayment(txnDto);
+		log.info(txnReference+" after processing success status: {}", txnDto);
+		
+		PaymentResponse paymentResponse=new PaymentResponse();
+		//paymentResponse.setProviderReference(response.getProviderReference()); it is dont pass because already set in txnDto
+		paymentResponse.setTxnReference(txnDto.getTxnReference());
+		paymentResponse.setTxnStatusId(txnDto.getTxnStatusId());
+		log.info("Final PaymentResponse to be returned: {}", paymentResponse);
+		
+				return paymentResponse;
 	}
 
 }
