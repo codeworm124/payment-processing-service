@@ -8,5 +8,5 @@ public interface PaymentService {
 
 	public PaymentResponse createPayment(CreatePaymentRequest request);
 	public PaymentResponse initiatePayment(String txnReference,InitiatePaymentRequest initiatePaymentRequest);
-	public String capturePayment(String txnReference);
+	public PaymentResponse capturePayment(String txnReference);
 }
